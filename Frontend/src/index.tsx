@@ -1,29 +1,13 @@
 /* @refresh reload */
 import './index.css';
 import { render } from 'solid-js/web';
+import {Route, Router} from '@solidjs/router';
 import 'solid-devtools';
 
-import App from './App';
+import Home from './Home';
+import Shell from "./Shell";
 
 const external = (window as any).external;
-
-// window.onerror = (msg, url, line, col, err) => {
-//     external?.sendMessage?.(JSON.stringify({
-//         type: 'error',
-//         message: msg,
-//         stack: err?.stack ?? null,
-//         url: url ?? null,
-//         line: line ?? null,
-//         col: col ?? null
-//     }));
-// };
-
-// window.onunhandledrejection = (e) => {
-//     external?.sendMessage?.(JSON.stringify({
-//         type: 'unhandled-rejection',
-//         reason: String(e.reason)
-//     }));
-// };
 
 const root = document.getElementById('root');
 
@@ -33,4 +17,11 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-render(() => <App />, root!);
+render(() => <Router>
+<Route component={Shell} path={"/"}>
+  <Route component={Home} path={"/"}/>
+  <Route component={Home} path={"/home"}/>
+  <Route component={()=><>Sets</>} path={"/sets"}/>
+  <Route component={()=><>Settings</>} path={"/settings"}/>
+</Route>
+</Router>, root!);

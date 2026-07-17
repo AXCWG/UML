@@ -14,6 +14,7 @@ class Program
                 .SetSize(1024, 768)
                 .Center()
                 .SetDevToolsEnabled(true)
+                .SetContextMenuEnabled(false)
                 .RegisterWebMessageReceivedHandler((sender, message) =>
                 {
                     Request? obj;
@@ -34,7 +35,7 @@ class Program
                                             Id = obj.Id,
                                             Type = Request.MessageType.Message,
                                             Content = $"Got it: {messageRequest?.Content}"
-                                        }));
+                                        }, JsonSerializerOptions.Web));
                                 }
                                 catch (Exception e)
                                 {
@@ -62,7 +63,7 @@ class Program
                                             Id = obj.Id,
                                             Type = Request.MessageType.Addition,
                                             Result = additionRequest.A + additionRequest.B
-                                        }));
+                                        }, JsonSerializerOptions.Web));
                                 }
                                 catch (Exception e)
                                 {
@@ -72,7 +73,7 @@ class Program
                                             Id = obj.Id,
                                             Type = Request.MessageType.Error,
                                             Error = e.ToString()
-                                        }));
+                                        }, JsonSerializerOptions.Web));
                                 }
                                 
                                 break;
@@ -170,7 +171,7 @@ static class PhotinoExtension
     {
         public void SendErrorMessage(ErrorResponse e)
         {
-            window.SendWebMessage(JsonSerializer.Serialize<ErrorResponse>(e));
+            window.SendWebMessage(JsonSerializer.Serialize<ErrorResponse>(e, JsonSerializerOptions.Web));
         }
     }
 }
