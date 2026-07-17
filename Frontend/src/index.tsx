@@ -1,7 +1,7 @@
 /* @refresh reload */
 import './index.css';
 import { render } from 'solid-js/web';
-import {Route, Router} from '@solidjs/router';
+import {HashRouter, Route, Router} from '@solidjs/router';
 import 'solid-devtools';
 
 import Home from './Home';
@@ -17,11 +17,11 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-render(() => <Router>
+render(() => <HashRouter>
 <Route component={Shell} path={"/"}>
   <Route component={Home} path={"/"}/>
   <Route component={Home} path={"/home"}/>
   <Route component={()=><>Sets</>} path={"/sets"}/>
   <Route component={()=><>Settings</>} path={"/settings"}/>
 </Route>
-</Router>, root!);
+</HashRouter>, root!);

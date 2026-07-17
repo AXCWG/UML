@@ -7,11 +7,26 @@
         <Nullable>enable</Nullable>
         <PublishAot>false</PublishAot>
         <InvariantGlobalization>true</InvariantGlobalization>
+        <LangVersion>preview</LangVersion>
+        
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="AXExpansion" Version="1.8.0" />
+      <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.10" />
       <PackageReference Include="Photino.NET" Version="4.0.16" />
     </ItemGroup>
 
+
+
+    <Target Name="PrepareUiZip" BeforeTargets="AssignTargetPaths" Condition="Exists('wwwroot')">
+        <ZipDirectory SourceDirectory="wwwroot" DestinationFile="$(IntermediateOutputPath)ui.zip" Overwrite="true" />
+        <ItemGroup>
+            <EmbeddedResource Include="$(IntermediateOutputPath)ui.zip" LogicalName="ui.wwwroot.zip" />
+        </ItemGroup>
+    </Target>
+    <ItemGroup>
+        <Folder Include="wwwroot\**"/>
+    </ItemGroup>
+ 
 </Project>

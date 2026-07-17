@@ -78,6 +78,35 @@ class  BackendDelegator  {
             })
         });
     };
+    public static GetConfigRequest: ()=>Promise<ConfigResponse> = ()=>{
+        const id = BackendDelegator.IdGen();
+        const req = {
+            id: id, type: "getConfig"
+        } as GetConfigRequest;
+        BackendDelegator.Request(req);
+        BackendDelegator.MessageStack.push({
+            request: req, response: null
+        });
+        return new Promise<ConfigResponse>((resolve, reject)=>{
+            let i = setInterval(()=>{
+                const resp = Enumerable.from(BackendDelegator.MessageStack).firstOrDefault(i=>i.request.id ===id )?.response
+                if (resp?.id){
+                    switch (resp.type) {
+                        case "getConfig":
+                            resolve((resp as ConfigResponse));
+                            break;
+                        case "error":
+                            reject((resp as ErrorResponse).error);
+                    }
+                    // DS
+                    const idx = BackendDelegator.MessageStack.findIndex(e => e.request.id === resp.id && e.response?.id === resp.id);
+                    if (idx >= 0) BackendDelegator.MessageStack.splice(idx, 1);
+                    // END:DS
+                    clearInterval(i);
+                }
+            })
+        });
+    }
 }
 (window.external as any).receiveMessage((m: string )=>{
     const resp = JSON.parse(m) as Response;
@@ -89,7 +118,7 @@ class  BackendDelegator  {
 })
 interface Request{
     id: number,
-    type: "message" | "addition"| "error",
+    type: "message" | "addition"| "error" | "getConfig" | "setConfig",
 }
 interface MessageRequest extends  Request{
     content: string
@@ -98,12 +127,15 @@ interface AdditionRequest extends Request{
     a: number;
     b: number;
 }
+interface GetConfigRequest extends Request{
+
+}
 interface ErrorRequest extends Request{
     error: string;
 }
 interface Response{
     id: number;
-    type: "message" | "addition"| "error",
+    type: "message" | "addition"| "error" | "getConfig" | "setConfig",
 }
 interface MessageResponse extends Response{
     content: string | undefined | null;
@@ -113,6 +145,9 @@ interface AdditionResponse extends Response{
 }
 interface ErrorResponse extends Response{
     error: string;
+}
+interface ConfigResponse extends Response{
+    snapshot: {online: boolean};
 }
 interface ResponseRequest{
     id: number;

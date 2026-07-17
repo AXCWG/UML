@@ -1,12 +1,16 @@
 ﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+
+using Minecraft.Request;
+using Minecraft.Response;
 using Photino.NET;
+
 namespace Minecraft;
 class Program
 {
     [STAThread]
     static void Main(string[] args)
     {
+        LauncherLogger.LogInfo<Program>("Program starting. ");
         try
         {
             var window = new PhotinoWindow()
@@ -17,14 +21,14 @@ class Program
                 .SetContextMenuEnabled(false)
                 .RegisterWebMessageReceivedHandler((sender, message) =>
                 {
-                    Request? obj;
+                    Request.Request? obj;
                     try
                     {
-                        obj = JsonSerializer.Deserialize<Request>(message, options: JsonSerializerOptions.Web);
+                        obj = JsonSerializer.Deserialize<Request.Request>(message, options: JsonSerializerOptions.Web);
                         
                         switch (obj?.Type)
                         {
-                            case Request.MessageType.Message:
+                            case Request.Request.MessageType.Message:
                                 try
                                 {
                                     MessageRequest? messageRequest =
@@ -33,7 +37,7 @@ class Program
                                         new()
                                         {
                                             Id = obj.Id,
-                                            Type = Request.MessageType.Message,
+                                            Type = Request.Request.MessageType.Message,
                                             Content = $"Got it: {messageRequest?.Content}"
                                         }, JsonSerializerOptions.Web));
                                 }
@@ -42,17 +46,17 @@ class Program
                                     ((PhotinoWindow)sender!).SendErrorMessage(new()
                                     {
                                         Id =  obj.Id,
-                                        Type = Request.MessageType.Error,
+                                        Type = Request.Request.MessageType.Error,
                                         Error = e.ToString()
                                     });
                                 }
                                 
                                 break;
-                            case Request.MessageType.Error:
+                            case Request.Request.MessageType.Error:
                                 ErrorRequest? errorRequest = JsonSerializer.Deserialize<ErrorRequest>(message, JsonSerializerOptions.Web);
                                 Console.WriteLine("{0}[Frontend] {1}", DateTime.Now, errorRequest?.Error);
                                 break;
-                            case Request.MessageType.Addition:
+                            case Request.Request.MessageType.Addition:
                                 try
                                 {
                                     AdditionRequest? additionRequest =
@@ -61,7 +65,7 @@ class Program
                                         new()
                                         {
                                             Id = obj.Id,
-                                            Type = Request.MessageType.Addition,
+                                            Type = Request.Request.MessageType.Addition,
                                             Result = additionRequest.A + additionRequest.B
                                         }, JsonSerializerOptions.Web));
                                 }
@@ -71,11 +75,22 @@ class Program
                                         new()
                                         {
                                             Id = obj.Id,
-                                            Type = Request.MessageType.Error,
+                                            Type = Request.Request.MessageType.Error,
                                             Error = e.ToString()
                                         }, JsonSerializerOptions.Web));
                                 }
                                 
+                                break;
+                            case Request.Request.MessageType.GetConfig:
+                                ((PhotinoWindow)sender!).SendWebMessage(JsonSerializer.Serialize(new ConfigResponse
+                                {
+                                    Id = obj.Id,
+                                    Type = Request.Request.MessageType.GetConfig,
+                                    Snapshot = State.GetAll
+                                }, JsonSerializerOptions.Web));
+                                break;
+                            case Request.Request.MessageType.SetConfig:
+                                //TODO
                                 break;
                             case null:
                                 break;
@@ -89,89 +104,36 @@ class Program
                         return;
                     }
                     
-                });
+                }).SetFileSystemAccessEnabled(true);
 
 #if DEBUG
             Console.WriteLine("Loading from Vite dev server (http://localhost:3000)...");
             window.Load(new Uri("http://localhost:3000"));
 #else
-    Console.WriteLine("Loading from wwwroot/index.html...");
-    window.Load("wwwroot/index.html");
+            string indexPath;
+            try
+            {
+                indexPath = ResourceExtractor.Extract();
+                Console.WriteLine($"Extracted UI to: {indexPath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Embedded resource unavailable ({ex.Message}), falling back to wwwroot/");
+                indexPath = Path.GetFullPath("wwwroot/index.html");
+            }
+            window.Load(indexPath);
 #endif
 
             window.WaitForClose();
+#if !DEBUG
+            ResourceExtractor.Cleanup();
+#endif
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Fatal] {ex}");
+            LauncherLogger.LogError<Program>($"{ex}");
         }
+        LauncherLogger.LogInfo<Program>("Program ended. ");
 
-    }
-}
-
-record Request
-{
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public enum MessageType
-    {
-        [JsonStringEnumMemberName("message")]
-        Message,
-        [JsonStringEnumMemberName("error")]
-        Error,
-        [JsonStringEnumMemberName("addition")]
-        Addition,
-    }
-    public long Id { get; set; }
-    public MessageType? Type { get; set; } 
-    
-}
-
-record MessageRequest : Request
-{
-    public string? Content { get; set; }
-}
-
-record AdditionRequest : Request
-{
-    public int A { get; set; }
-    public int B { get; set; }
-}
-
-record ErrorRequest : Request
-{
-    public string Error { get; set; }
-}
-
-class Response
-{
-    public long Id { get; set; }
-    public Request.MessageType Type { get; set; }
-    
-}
-
-class  MessageResponse : Response
-{
-    public string? Content { get; set; }   
-}
-
-class AdditionResponse : Response
-{
-    public long Result { get; set; }
-}
-
-class ErrorResponse : Response
-{
-    public required string Error { get; set; }
-}
-
-
-static class PhotinoExtension
-{
-    extension(PhotinoWindow window)
-    {
-        public void SendErrorMessage(ErrorResponse e)
-        {
-            window.SendWebMessage(JsonSerializer.Serialize<ErrorResponse>(e, JsonSerializerOptions.Web));
-        }
     }
 }
