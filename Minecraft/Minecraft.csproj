@@ -13,6 +13,7 @@
 
     <ItemGroup>
       <PackageReference Include="AXExpansion" Version="1.8.0" />
+      <PackageReference Include="CmlLib.Core" Version="4.0.6" />
       <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.10" />
       <PackageReference Include="Photino.NET" Version="4.0.16" />
     </ItemGroup>
@@ -26,7 +27,11 @@
         </ItemGroup>
     </Target>
     <ItemGroup>
-        <Folder Include="wwwroot\**"/>
+        <Folder Include="wwwroot\**" />
+    </ItemGroup>
+    <ItemGroup>
+      <Compile Remove="Test.cs" />
+      <None Include="Test.cs" />
     </ItemGroup>
  
 </Project>

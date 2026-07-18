@@ -17,7 +17,7 @@ const Shell = (props: RouteSectionProps)=>{
                 }}>Home</a>
                 <a id={"/sets"} role={"tab"} class={"tab"} classList={{["tab-active"]: current() === "/sets"}} onclick={()=>{
                     navigate("/sets");
-                }}>Sets</a>
+                }}>Profiles</a>
                 <a id={"/settings"} role={"tab"} class={"tab"} classList={{["tab-active"]: current() === "/settings"}} onclick={()=>{
                     navigate("/settings");
                 }}>Settings</a>

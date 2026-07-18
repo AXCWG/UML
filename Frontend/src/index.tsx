@@ -6,9 +6,10 @@ import 'solid-devtools';
 
 import Home from './Home';
 import Shell from "./Shell";
+import {BackendDelegator} from "./BackendDelegator";
+import ProfilesPage from "./ProfilesPage";
 
 const external = (window as any).external;
-
 const root = document.getElementById('root');
 
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
@@ -21,7 +22,7 @@ render(() => <HashRouter>
 <Route component={Shell} path={"/"}>
   <Route component={Home} path={"/"}/>
   <Route component={Home} path={"/home"}/>
-  <Route component={()=><>Sets</>} path={"/sets"}/>
+  <Route component={ProfilesPage} path={"/sets"}/>
   <Route component={()=><>Settings</>} path={"/settings"}/>
 </Route>
 </HashRouter>, root!);

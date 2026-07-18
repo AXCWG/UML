@@ -1,5 +1,5 @@
 ﻿using System.Text.Json;
-
+using AXExpansion;
 using Minecraft.Request;
 using Minecraft.Response;
 using Photino.NET;
@@ -25,7 +25,8 @@ class Program
                     try
                     {
                         obj = JsonSerializer.Deserialize<Request.Request>(message, options: JsonSerializerOptions.Web);
-                        
+
+                        var photinoWindow = ((PhotinoWindow)sender!);
                         switch (obj?.Type)
                         {
                             case Request.Request.MessageType.Message:
@@ -33,7 +34,7 @@ class Program
                                 {
                                     MessageRequest? messageRequest =
                                         JsonSerializer.Deserialize<MessageRequest>(message, JsonSerializerOptions.Web);
-                                    ((PhotinoWindow)sender!).SendWebMessage(JsonSerializer.Serialize<MessageResponse>(
+                                    photinoWindow.SendWebMessage(JsonSerializer.Serialize<MessageResponse>(
                                         new()
                                         {
                                             Id = obj.Id,
@@ -43,12 +44,7 @@ class Program
                                 }
                                 catch (Exception e)
                                 {
-                                    ((PhotinoWindow)sender!).SendErrorMessage(new()
-                                    {
-                                        Id =  obj.Id,
-                                        Type = Request.Request.MessageType.Error,
-                                        Error = e.ToString()
-                                    });
+                                    photinoWindow.SendErrorMessage(new(obj.Id, e.ToString()));
                                 }
                                 
                                 break;
@@ -61,7 +57,7 @@ class Program
                                 {
                                     AdditionRequest? additionRequest =
                                         JsonSerializer.Deserialize<AdditionRequest>(message, JsonSerializerOptions.Web);
-                                    ((PhotinoWindow)sender!).SendWebMessage(JsonSerializer.Serialize<AdditionResponse>(
+                                    photinoWindow.SendWebMessage(JsonSerializer.Serialize<AdditionResponse>(
                                         new()
                                         {
                                             Id = obj.Id,
@@ -71,18 +67,13 @@ class Program
                                 }
                                 catch (Exception e)
                                 {
-                                    ((PhotinoWindow)sender!).SendWebMessage(JsonSerializer.Serialize<ErrorResponse>(
-                                        new()
-                                        {
-                                            Id = obj.Id,
-                                            Type = Request.Request.MessageType.Error,
-                                            Error = e.ToString()
-                                        }, JsonSerializerOptions.Web));
+                                    photinoWindow.SendWebMessage(JsonSerializer.Serialize<ErrorResponse>(
+                                        new(obj.Id, e.ToString()), JsonSerializerOptions.Web));
                                 }
                                 
                                 break;
                             case Request.Request.MessageType.GetConfig:
-                                ((PhotinoWindow)sender!).SendWebMessage(JsonSerializer.Serialize(new ConfigResponse
+                                photinoWindow.SendWebMessage(JsonSerializer.Serialize(new ConfigResponse
                                 {
                                     Id = obj.Id,
                                     Type = Request.Request.MessageType.GetConfig,
@@ -91,7 +82,22 @@ class Program
                                 break;
                             case Request.Request.MessageType.SetConfig:
                                 //TODO
+                                var sCReq =
+                                    JsonSerializer.Deserialize<SetConfigRequest>(message, JsonSerializerOptions.Web);
+                                if (sCReq?.Snapshot is null)
+                                {
+                                    LauncherLogger.LogError<Program>("Client request set state failed: null request. ");
+                                    photinoWindow.SendErrorMessage(new(id: obj.Id, error: "State config request is null. "));
+                                    break;
+                                }
+                                State.Set(sCReq);
+                                photinoWindow.SendWebMessage(JsonSerializer.Serialize(new SetConfigResponse(obj.Id)));
                                 break;
+                            case Request.Request.MessageType.Play:
+                                LauncherLogger.LogWarning<Program>("Launch clicked. ");
+                                State.LauncherBackend.Play().GetAwaiter().GetResult();
+                                photinoWindow.SendWebMessage(JsonSerializer.SerializeWeb(new PlayResponse(obj.Id)));
+                                break; 
                             case null:
                                 break;
                             default:

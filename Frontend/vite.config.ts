@@ -13,7 +13,7 @@ export default defineConfig({
   base: './',
   build: {
     target: 'esnext',
-    outDir: '../Minecraft/Resources/wwwroot',
+    outDir: '../Minecraft/wwwroot',
     emptyOutDir: true
   },
 });

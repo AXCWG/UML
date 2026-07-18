@@ -17,6 +17,9 @@ record Request
         GetConfig,
         [JsonStringEnumMemberName("setConfig")]
         SetConfig,
+        [JsonStringEnumMemberName("play")]
+        Play, 
+        
     }
     public long Id { get; set; }
     public MessageType? Type { get; set; } 

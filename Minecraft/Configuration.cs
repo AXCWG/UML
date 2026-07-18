@@ -1,13 +1,18 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using AXExpansion;
+using CmlLib.Core;
+using ICSharpCode.SharpZipLib.Zip;
 
 namespace Minecraft;
 
 public static class State 
 {
+    internal static  Minecraft LauncherBackend { get; set; } = new Minecraft();
+    
     private static  JsonSerializerOptions Options => new JsonSerializerOptions(JsonSerializerOptions.Default).With(d =>
     {
         d.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -15,41 +20,93 @@ public static class State
     });
     static State()
     {
-        void Recursive()
-        {
-            var pathJoin = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                .PathJoin("AXCWG", "UML", "state.json");
-            if (!File.Exists(pathJoin))
-            {
-                LauncherLogger.LogWarning("No state file found at default directory. Making one now...", nameof(State));
-                File.WriteAllText(pathJoin, JsonSerializer.Serialize(new StateSnapshot()
-                {
-                    Online = false
-                }, options: Options));return;
-            }
+        Validation();
+    }
 
-            try
+    public static void Validation()
+    {
+        var pathJoin = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+            .PathJoin("AXCWG", "UML", "state.json");
+        if (!File.Exists(pathJoin))
+        {
+            LauncherLogger.LogWarning("No state file found at default directory. Making one now...", nameof(State));
+            File.WriteAllText(pathJoin, JsonSerializer.Serialize(new StateSnapshot()
             {
-                LauncherLogger.LogInfo("Validating state...", nameof(State));
-                var test = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(pathJoin), Options);
-                if (test is null)
+                Online = false, Profiles = [new()
                 {
-                    throw new JsonException(message:"Whole file is null. ");
-                }
-                LauncherLogger.LogInfo("Validated. ", nameof(State));
-            }
-            catch (JsonException e)
-            {
-                LauncherLogger.LogError("Error reading state file: \n" + e, nameof(State));
-                LauncherLogger.LogError("Deleting existing state file and replace with a new one.", nameof(State));
-                File.Delete(pathJoin);
-                Recursive();
-            }
+                    Path = MinecraftPath.GetOSDefaultPath(), Name = "Default Official Profile"
+                }]
+            }, options: Options));return;
         }
 
-        Recursive();
+            
+        LauncherLogger.LogInfo("Validating state...", nameof(State));
+        try
+        {
+            var test = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(pathJoin), Options);
+            if (test is null)
+            {
+                LauncherLogger.LogError("Whole file is null. Deleting existing state file and replace with a new one.",
+                    nameof(State));
+                File.Delete(pathJoin);
+                Validation();
+                return;
+            }
+
+            if (test.Online is null)
+            {
+                LauncherLogger.LogError(
+                    "Property 'online' is not present/is null in file. Defaulting back to false...");
+                test.Online = false;
+            }
+
+            if (test.Profiles is null)
+            {
+                LauncherLogger.LogError("Property 'profiles' is not present/is null in file. Defaulting back to [OSDefault]...");
+                test.Profiles =
+                [
+                    new()
+                    {
+                        Path = MinecraftPath.GetOSDefaultPath(),
+                        Name = "Default Official Profile"
+                    }
+                ];
+            }
+
+           
+            for (var i = 0; i < test.Profiles.Count; i++)
+            {
+                if (test.Profiles[i].Path is null)
+                {
+                    LauncherLogger.LogWarning("Profile found abnormal entry: path is null. Removing and continue.", nameof(State));
+                    test.Profiles.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+                if (test.Profiles[i].Name is null)
+                {
+                     LauncherLogger.LogError("Profile found abnormal entry: name is null. Renaming to default and continue. ", nameof(State));
+                     test.Profiles[i].Name = "Unnamed";
+                }
+
+                
+            }
+
+            File.WriteAllText(pathJoin, JsonSerializer.Serialize(test, Options));
+            LauncherLogger.LogInfo("Validated. ", nameof(State));
+        }
+        catch (JsonException e)
+        {
+            LauncherLogger.LogError("Validation failed. Deleting existing state file and replace with a new one.", nameof(State));
+            File.Delete(pathJoin);
+            Validation();
+            return;
+        }
+       
     }
-    public static void Set<T>(Expression<Action<StateSnapshot>> expression, T value) 
+
+    [Obsolete("Nobody uses it. ")]
+    public static void Set<T, TProp>(Expression<Func<StateSnapshot, TProp>> expression, T value)
     {
         if (expression.Body is MemberExpression expressionMember)
         {
@@ -90,7 +147,46 @@ public static class State
             }
         }
     }
+    
+    public static void Set(StateSnapshot obj)
+    {
+        Validation();
+        try
+        {
+            var stored = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
+                .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                .PathJoin("AXCWG", "UML", "state.json")), Options);
 
+            foreach (var propertyInfo in typeof(StateSnapshot).GetProperties(
+                         BindingFlags.Public | BindingFlags.Instance))
+            {
+                propertyInfo.SetValue(stored,
+                    (typeof(StateSnapshot).GetProperty(propertyInfo.Name) ?? throw new InvalidOperationException())
+                    .GetValue(obj));
+            }
+
+            File.WriteAllText(Environment
+                    .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                    .PathJoin("AXCWG", "UML", "state.json"),
+                JsonSerializer.Serialize<StateSnapshot>(stored ?? throw new NullReferenceException(), Options));
+        }
+        catch (JsonException e)
+        {
+            LauncherLogger.LogError($"Error setting property: \n{e}", nameof(State));
+        }
+        catch (InvalidOperationException e)
+        {
+            LauncherLogger.LogError("Something really wrong occured to dotnet runtime. ");
+            throw new ApplicationException("Something really wrong occured to dotnet runtime. ");
+        }
+        catch (NullReferenceException)
+        {
+            Validation();
+            Set(obj);
+        }
+        // Set(i=>i.Online, obj.Online);
+    }
+    
     public static T? Get<T>(Expression<Action<StateSnapshot>> expression)
     {
         try
@@ -124,5 +220,13 @@ public static class State
 
 public class StateSnapshot
 {
-    public required bool Online { get; set; } = false; 
+    public required bool? Online { get; set; } = false;
+    public required List<Profile>? Profiles { get; set; }
+    
+    public class Profile
+    {
+        public required string? Path { get; set; }
+        public required string? Name { get; set; }
+    }
+    
 }
