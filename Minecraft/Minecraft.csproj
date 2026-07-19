@@ -20,6 +20,10 @@
 
 
 
+    <Target Name="BuildFrontend" BeforeTargets="PrepareUiZip" Condition="Exists('..\Frontend\package.json')">
+        <Exec Command="pnpm run build" WorkingDirectory="..\Frontend" />
+    </Target>
+
     <Target Name="PrepareUiZip" BeforeTargets="AssignTargetPaths" Condition="Exists('wwwroot')">
         <ZipDirectory SourceDirectory="wwwroot" DestinationFile="$(IntermediateOutputPath)ui.zip" Overwrite="true" />
         <ItemGroup>
