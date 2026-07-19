@@ -2,7 +2,7 @@ import {StateSnapshot} from "./BackendDelegator";
 
 interface Response {
     id: number;
-    type: "message" | "addition" | "error" | "getConfig" | "setConfig",
+    type: "message" | "addition" | "error" | "getConfig" | "setConfig"  |"getVersion",
 }
 
 interface MessageResponse extends Response {
@@ -20,7 +20,9 @@ interface ErrorResponse extends Response {
 export interface ConfigResponse extends Response {
     snapshot: StateSnapshot;
 }
+export interface GetVersionResponse extends Response{
 
+}
 export type {ErrorResponse};
 export type {AdditionResponse};
 export type {MessageResponse};

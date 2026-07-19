@@ -19,7 +19,7 @@ class Program
                 .Center()
                 .SetDevToolsEnabled(true)
                 .SetContextMenuEnabled(false)
-                .RegisterWebMessageReceivedHandler((sender, message) =>
+                .RegisterWebMessageReceivedHandler(async void (sender, message) =>
                 {
                     Request.Request? obj;
                     try
@@ -34,7 +34,7 @@ class Program
                                 {
                                     MessageRequest? messageRequest =
                                         JsonSerializer.Deserialize<MessageRequest>(message, JsonSerializerOptions.Web);
-                                    photinoWindow.SendWebMessage(JsonSerializer.Serialize<MessageResponse>(
+                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<MessageResponse>(
                                         new()
                                         {
                                             Id = obj.Id,
@@ -57,7 +57,7 @@ class Program
                                 {
                                     AdditionRequest? additionRequest =
                                         JsonSerializer.Deserialize<AdditionRequest>(message, JsonSerializerOptions.Web);
-                                    photinoWindow.SendWebMessage(JsonSerializer.Serialize<AdditionResponse>(
+                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<AdditionResponse>(
                                         new()
                                         {
                                             Id = obj.Id,
@@ -67,13 +67,14 @@ class Program
                                 }
                                 catch (Exception e)
                                 {
-                                    photinoWindow.SendWebMessage(JsonSerializer.Serialize<ErrorResponse>(
+                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<ErrorResponse>(
                                         new(obj.Id, e.ToString()), JsonSerializerOptions.Web));
                                 }
                                 
                                 break;
                             case Request.Request.MessageType.GetConfig:
-                                photinoWindow.SendWebMessage(JsonSerializer.Serialize(new ConfigResponse
+                                await State.CheckVersion();
+                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(new ConfigResponse
                                 {
                                     Id = obj.Id,
                                     Type = Request.Request.MessageType.GetConfig,
@@ -87,16 +88,16 @@ class Program
                                 if (sCReq?.Snapshot is null)
                                 {
                                     LauncherLogger.LogError<Program>("Client request set state failed: null request. ");
-                                    photinoWindow.SendErrorMessage(new(id: obj.Id, error: "State config request is null. "));
+                                    await photinoWindow.SendErrorMessageAsync(new(id: obj.Id, error: "State config request is null. "));
                                     break;
                                 }
                                 State.Set(sCReq);
-                                photinoWindow.SendWebMessage(JsonSerializer.Serialize(new SetConfigResponse(obj.Id)));
+                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(new SetConfigResponse(obj.Id)));
                                 break;
                             case Request.Request.MessageType.Play:
                                 LauncherLogger.LogWarning<Program>("Launch clicked. ");
                                 State.LauncherBackend.Play().GetAwaiter().GetResult();
-                                photinoWindow.SendWebMessage(JsonSerializer.SerializeWeb(new PlayResponse(obj.Id)));
+                                await photinoWindow.SendWebMessageAsync(JsonSerializer.SerializeWeb(new PlayResponse(obj.Id)));
                                 break; 
                             case null:
                                 break;
@@ -109,7 +110,10 @@ class Program
                         Console.WriteLine(e);
                         return;
                     }
-                    
+                    catch (Exception e)
+                    {
+                        throw; // TODO 处理异常
+                    }
                 }).SetFileSystemAccessEnabled(true);
 
 #if DEBUG

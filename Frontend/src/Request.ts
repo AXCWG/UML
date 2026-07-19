@@ -2,7 +2,7 @@ import {StateSnapshot} from "./BackendDelegator";
 
 interface Request {
     id: number,
-    type: "message" | "addition" | "error" | "getConfig" | "setConfig" | "play",
+    type: "message" | "addition" | "error" | "getConfig" | "setConfig" | "play" | "getVersion",
 }
 
 export type {Request};

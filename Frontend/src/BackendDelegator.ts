@@ -149,7 +149,19 @@ class  BackendDelegator  {
 })
 interface StateSnapshot{
     online: boolean;
-    profiles: {path: string, name: string}[];
+    profiles: {
+        path: string,
+        name: string,
+        uuid: string,
+        unreliableVersionList: Record<string, {
+            name: string,
+            jrePath: string | null | undefined,
+            memMegabyte: number | null | undefined
+        }>
+    }[];
+    selectedProfileUuid: string,
+    jrePath: string,
+    memMegabyte: number,
 }
 
 

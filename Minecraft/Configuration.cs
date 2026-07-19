@@ -1,11 +1,12 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using AXExpansion;
 using CmlLib.Core;
-using ICSharpCode.SharpZipLib.Zip;
+using CmlLib.Core.ProcessBuilder;
+using CmlLib.Core.VersionLoader;
+using Log = Minecraft.LauncherLogger;
+// ReSharper disable VariableHidesOuterVariable
 
 namespace Minecraft;
 
@@ -15,38 +16,198 @@ public static class State
     
     private static  JsonSerializerOptions Options => new JsonSerializerOptions(JsonSerializerOptions.Default).With(d =>
     {
-        d.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         d.WriteIndented = true;
+        d.AllowTrailingCommas = true;
     });
     static State()
     {
         Validation();
     }
+    // public static IEnumerable<StateSnapshot.VersionConfig> EnumeratePossibleLocalVersion(string path)
+    // {
+    //                 
+    //     var enumerateDirectories = Directory.EnumerateDirectories(path.PathJoin("versions"));
+    //     foreach (var enumerateDirectory in enumerateDirectories)
+    //     {
+    //         Console.WriteLine($"Found {Path.GetFileName(enumerateDirectory)}");
+    //         yield return new()
+    //         {
+    //             Name = Path.GetFileName(enumerateDirectory),
+    //             JrePath = null,
+    //             MemMegabyte = null
+    //         };
+    //     }
+    // }
+    private static MinecraftLauncher ConvieniantlyGetMLauncher => new MinecraftLauncher(MinecraftLauncherParameters.CreateDefault().With(i =>
+    {
+        i.VersionLoader =  new LocalJsonVersionLoader(new MinecraftPath(MinecraftPath.GetOSDefaultPath()));
+            
+    }));
+    public static async Task<int> CheckVersion(string? uuid = null)
+    {
+        while (true)
+        {
+            var l = await ConvieniantlyGetMLauncher.GetAllVersionsAsync();
+            var profiles = Get(i => i.Profiles);
+            if (profiles is null || profiles.Any(i => i.UnreliableVersionList is null) || profiles.Any(i => i.Path is null))
+            {
+                Log.LogError("Check version failed. Rerunning validation then recursive execution. ", nameof(CheckVersion));
+                Validation();
+                continue; 
+            }
 
+            var count = 0;
+            if (uuid is null)
+            {
+                foreach (var profile in profiles)
+                {
+                    profile.UnreliableVersionList!.Remove(i =>
+                    {
+                        if (!l.Contains(i.Value.Name))
+                        {
+                            count++;
+                            return true;
+                        }
+
+                        return false; 
+                    });
+                    var existButNoRecord =
+                        l.Where(i => profile.UnreliableVersionList!.All(o => o.Value.Name != i.Name)).ToList();
+                    foreach (var versionMetadata in existButNoRecord)
+                    {
+                        profile.UnreliableVersionList!.Add(Guid.NewGuid().ToString(), new StateSnapshot.VersionConfig()
+                        {
+                            Name = versionMetadata.Name
+                        });
+                    }
+                    profile.UnreliableVersionList.SPrintLn();
+                }
+
+               
+            }
+            else
+            {
+                profiles.FirstOrDefault(i=>i.Uuid == uuid)?.UnreliableVersionList!.Remove(i =>
+                {
+                    if (!l.Contains(i.Value.Name))
+                    {
+                        count++;
+                        return true;
+                    }
+
+                    return false; 
+                });
+            }
+            
+            Set(i=>i.Profiles, profiles);
+            return count;
+        }
+       
+    }
+    // public static int CheckVersion(string? uuid = null)
+    // {
+    //     while (true)
+    //     {
+    //         var profiles = Get(i => i.Profiles);
+    //         if (profiles is null || profiles.Any(i => i.UnreliableVersionList is null) || profiles.Any(i => i.Path is null))
+    //         {
+    //             Log.LogError("Check version failed. Rerunning validation then recursive execution. ", nameof(CheckVersion));
+    //             Validation();
+    //             continue;
+    //         }
+    //
+    //         int count = 0;
+    //         if (uuid is null)
+    //         {
+    //             foreach (var profile in profiles)
+    //             {
+    //                 var enumeratePossibleLocalVersion = EnumeratePossibleLocalVersion(profile.Path!).ToList();
+    //             
+    //                 foreach (var versionConfig in enumeratePossibleLocalVersion)
+    //                 {
+    //                     if (profile.UnreliableVersionList!.Any(i => i.Value.Name == versionConfig.Name))
+    //                     {
+    //                         continue;
+    //                     }
+    //                     profile.UnreliableVersionList!.Add(Guid.NewGuid().ToString(),  versionConfig);
+    //                     count++; 
+    //                 }
+    //                 var list = profile.UnreliableVersionList!.ToList();
+    //                 foreach (var t in list)
+    //                 {
+    //                     if (enumeratePossibleLocalVersion.Any(vi => vi.Name == t.Value.Name))
+    //                         continue;
+    //                     profile.UnreliableVersionList!.Remove(t.Key);
+    //                 }
+    //             }
+    //         }
+    //         else
+    //         {
+    //             var profile = profiles.FirstOrDefault(i=>i.Uuid == uuid);
+    //             if (profile is null)
+    //             {
+    //                 throw new IOException("Check version uuid not exist. ");
+    //             }
+    //             var enumeratePossibleLocalVersion = EnumeratePossibleLocalVersion(profile.Path!).ToList();
+    //             
+    //             foreach (var versionConfig in enumeratePossibleLocalVersion)
+    //             {
+    //                 if (profile.UnreliableVersionList!.Any(i => i.Value.Name == versionConfig.Name))
+    //                 {
+    //                     continue;
+    //                 }
+    //                 profile.UnreliableVersionList!.Add(Guid.NewGuid().ToString(),  versionConfig);
+    //                 count++; 
+    //             }
+    //             var list = profile.UnreliableVersionList!.ToList();
+    //             foreach (var t in list)
+    //             {
+    //                 if (enumeratePossibleLocalVersion.Any(vi => vi.Name == t.Value.Name))
+    //                     continue;
+    //                 profile.UnreliableVersionList!.Remove(t.Key);
+    //             }
+    //         }
+    //         
+    //         return count;
+    //         
+    //     }
+    // }
+
+    public static async  void A()
+    {
+        var m = new MinecraftLauncher(MinecraftLauncherParameters.CreateDefault().With(i =>
+        {
+            i.VersionLoader =  new LocalJsonVersionLoader(new MinecraftPath(MinecraftPath.GetOSDefaultPath()));
+            
+        }));
+        (await m.GetAllVersionsAsync()).SPrintLn();
+    }
     public static void Validation()
     {
         var pathJoin = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
             .PathJoin("AXCWG", "UML", "state.json");
         if (!File.Exists(pathJoin))
         {
-            LauncherLogger.LogWarning("No state file found at default directory. Making one now...", nameof(State));
+            Log.LogWarning("No state file found at default directory. Making one now...", nameof(State));
+            var uuid = Guid.NewGuid().ToString();
             File.WriteAllText(pathJoin, JsonSerializer.Serialize(new StateSnapshot()
             {
                 Online = false, Profiles = [new()
                 {
-                    Path = MinecraftPath.GetOSDefaultPath(), Name = "Default Official Profile"
-                }]
+                    Path = MinecraftPath.GetOSDefaultPath(), Name = "Default Official Profile", Uuid = uuid,
+                }], SelectedProfileUuid = uuid
             }, options: Options));return;
         }
 
             
-        LauncherLogger.LogInfo("Validating state...", nameof(State));
+        Log.LogInfo("Validating state...", nameof(State));
         try
         {
+            // TODO on adding property
             var test = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(pathJoin), Options);
             if (test is null)
             {
-                LauncherLogger.LogError("Whole file is null. Deleting existing state file and replace with a new one.",
+                Log.LogError("Whole file is null. Deleting existing state file and replace with a new one.",
                     nameof(State));
                 File.Delete(pathJoin);
                 Validation();
@@ -55,52 +216,110 @@ public static class State
 
             if (test.Online is null)
             {
-                LauncherLogger.LogError(
+                Log.LogError(
                     "Property 'online' is not present/is null in file. Defaulting back to false...");
                 test.Online = false;
             }
 
             if (test.Profiles is null)
             {
-                LauncherLogger.LogError("Property 'profiles' is not present/is null in file. Defaulting back to [OSDefault]...");
+                Log.LogError("Property 'profiles' is not present/is null in file. Defaulting back to [OSDefault]...");
                 test.Profiles =
                 [
                     new()
                     {
                         Path = MinecraftPath.GetOSDefaultPath(),
-                        Name = "Default Official Profile"
+                        Name = "Default Official Profile",
+                        Uuid = Guid.NewGuid().ToString(),
                     }
                 ];
             }
 
-           
+            if (test.JrePath is null)
+            {
+                //TODO
+            }
+
+            if (test.MemMegabyte is null)
+            {
+                Log.LogError($"Property '{nameof(test.MemMegabyte)}' is not present or is null in file. Defaulting back to 1024.");
+                test.MemMegabyte = 1024;
+            }
+
+            
+
             for (var i = 0; i < test.Profiles.Count; i++)
             {
                 if (test.Profiles[i].Path is null)
                 {
-                    LauncherLogger.LogWarning("Profile found abnormal entry: path is null. Removing and continue.", nameof(State));
+                    Log.LogWarning($"Profile found abnormal entry: {nameof(StateSnapshot.Profile.Path)} is null. Removing and continue.", nameof(State));
                     test.Profiles.RemoveAt(i);
                     i--;
                     continue;
                 }
                 if (test.Profiles[i].Name is null)
                 {
-                     LauncherLogger.LogError("Profile found abnormal entry: name is null. Renaming to default and continue. ", nameof(State));
+                     Log.LogError($"Profile found abnormal entry: {nameof(StateSnapshot.Profile.Name)} is null. Renaming to default and continue. ", nameof(State));
                      test.Profiles[i].Name = "Unnamed";
                 }
 
+                if (test.Profiles[i].Uuid is null)
+                {
+                    Log.LogError($"Profile found abnormal entry: {nameof(StateSnapshot.Profile.Uuid)} is null. Automatically applying for it. ", nameof(State));
+                    test.Profiles[i].Uuid = Guid.NewGuid().ToString();
+                }
+
+                if (test.Profiles[i].UnreliableVersionList is null)
+                {
+                    Log.LogError($"Property '{nameof(StateSnapshot.Profile.UnreliableVersionList)}' is null or not presented. Now checking existing versions. ", nameof(State));
+                    var minecraftPath = new MinecraftPath(MinecraftPath.GetOSDefaultPath());
+                    var exist = new MinecraftLauncher(MinecraftLauncherParameters.CreateDefault(minecraftPath)
+                        .With(i =>
+                        {
+                            i.VersionLoader = new LocalJsonVersionLoader(minecraftPath);
+                        })).GetAllVersionsAsync().GetAwaiter().GetResult();
+                    exist.SPrintLn();
+                    test.Profiles[i].UnreliableVersionList = new Dictionary<string, StateSnapshot.VersionConfig>().With(d =>
+                    {
+                        foreach (var versionConfig in exist)
+                        {
+                            Log.LogInfo($"Adding {versionConfig.Name}");
+                            d.Add(Guid.NewGuid().ToString(), new()
+                            {
+                                Name = versionConfig.Name,
+                                JrePath = null,
+                                MemMegabyte = null
+                            });
+                        }
+                    });
+                }
+
+                test.Profiles[i].UnreliableVersionList!.Remove(i =>
+                {
+                    if (i.Value.Name is not null) return false;
+                    Log.LogError("Found incomplete version entry with null as name. Prepare to remove. ");
+                    return true;
+                });
                 
+
             }
 
+            if (test.SelectedProfileUuid is null && test.Profiles.Count != 0)
+            {
+                Log.LogError($"Property '{nameof(test.SelectedProfileUuid)}' is not present/is null in file. Defaulting back to default...");
+                test.SelectedProfileUuid = test.Profiles[0].Uuid;
+            }
+
+            CheckVersion().GetAwaiter().GetResult();
             File.WriteAllText(pathJoin, JsonSerializer.Serialize(test, Options));
-            LauncherLogger.LogInfo("Validated. ", nameof(State));
+            Log.LogInfo("Validated. ", nameof(State));
         }
         catch (JsonException e)
         {
-            LauncherLogger.LogError("Validation failed. Deleting existing state file and replace with a new one.", nameof(State));
+            Log.LogError(e.ToString(), nameof(State));
+            Log.LogError("Validation failed. Deleting existing state file and replace with a new one.", nameof(State));
             File.Delete(pathJoin);
             Validation();
-            return;
         }
        
     }
@@ -112,7 +331,7 @@ public static class State
         {
             if (expressionMember.Member.MemberType is MemberTypes.Property)
             {
-                LauncherLogger.LogInfo($"Setting state property \"{expressionMember.Member.Name}\"");
+                Log.LogInfo($"Setting state property \"{expressionMember.Member.Name}\"");
                 try
                 {
                     var obj = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
@@ -128,7 +347,7 @@ public static class State
                         property.SetValue(obj, value);
                         File.WriteAllText(Environment
                             .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                            .PathJoin("AXCWG", "UML", "state.json"),JsonSerializer.Serialize<StateSnapshot>(obj, Options));
+                            .PathJoin("AXCWG", "UML", "state.json"),JsonSerializer.Serialize(obj, Options));
                     }
                     else
                     {
@@ -137,11 +356,11 @@ public static class State
                 }
                 catch (JsonException e)
                 {
-                    LauncherLogger.LogError($"Error setting property: \n{e}", nameof(State));
+                    Log.LogError($"Error setting property: \n{e}", nameof(State));
                 }
                 catch (MissingMemberException e)
                 {
-                    LauncherLogger.LogError($"State property {expressionMember.Member.Name} does not exists. \n{e}");
+                    Log.LogError($"State property {expressionMember.Member.Name} does not exists. \n{e}");
                 }
               
             }
@@ -150,7 +369,6 @@ public static class State
     
     public static void Set(StateSnapshot obj)
     {
-        Validation();
         try
         {
             var stored = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
@@ -168,15 +386,15 @@ public static class State
             File.WriteAllText(Environment
                     .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
                     .PathJoin("AXCWG", "UML", "state.json"),
-                JsonSerializer.Serialize<StateSnapshot>(stored ?? throw new NullReferenceException(), Options));
+                JsonSerializer.Serialize(stored ?? throw new NullReferenceException(), Options));
         }
         catch (JsonException e)
         {
-            LauncherLogger.LogError($"Error setting property: \n{e}", nameof(State));
+            Log.LogError($"Error setting property: \n{e}", nameof(State));
         }
-        catch (InvalidOperationException e)
+        catch (InvalidOperationException)
         {
-            LauncherLogger.LogError("Something really wrong occured to dotnet runtime. ");
+            Log.LogError("Something really wrong occured to dotnet runtime. ");
             throw new ApplicationException("Something really wrong occured to dotnet runtime. ");
         }
         catch (NullReferenceException)
@@ -187,7 +405,7 @@ public static class State
         // Set(i=>i.Online, obj.Online);
     }
     
-    public static T? Get<T>(Expression<Action<StateSnapshot>> expression)
+    public static T Get<T>(Expression<Func<StateSnapshot, T>> expression)
     {
         try
         {
@@ -203,30 +421,61 @@ public static class State
                     memberName: expressionMember.Member.Name);
             }
 
-            return (T?)prop.GetValue(obj);
+            var s = (T?)prop.GetValue(obj);
+            if (s is null)
+            {
+                Log.LogError($"Get error. Triggering {nameof(Validation)}.");
+                Validation();
+                s = Get(expression);
+            }
+
+            return s;
         }
         catch (MemberAccessException e)
         {
-            LauncherLogger.LogError($"Get error: {e}", nameof(State));
+            Log.LogError($"Get error: {e}\nTrying to revalidate. ", nameof(State));
+            Validation();
+            return Get(expression);
         }
-        throw new Exception("Get error");
         
     }
-    public static StateSnapshot GetAll =>
-        JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
-            .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-            .PathJoin("AXCWG", "UML", "state.json")), Options) ?? throw new NullReferenceException();
+    public static StateSnapshot GetAll
+    {
+        get
+        {
+            return JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
+                .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                .PathJoin("AXCWG", "UML", "state.json")), Options) ?? throw new NullReferenceException();
+        }
+    }
 }
 
-public class StateSnapshot
+public class StateSnapshot : IVersionConfig
 {
-    public required bool? Online { get; set; } = false;
-    public required List<Profile>? Profiles { get; set; }
+    public  bool? Online { get; set; } = false;
+    public  List<Profile>? Profiles { get; set; }
     
     public class Profile
     {
-        public required string? Path { get; set; }
-        public required string? Name { get; set; }
+        public  string? Path { get; set; }
+        public  string? Name { get; set; }
+        public  string? Uuid { get; set; }
+        public Dictionary<string, VersionConfig>? UnreliableVersionList { get; set; }
     }
-    
+    // TODO
+    public class VersionConfig : IVersionConfig
+    {
+        public string? Name { get; set; }
+        public string? JrePath { get; set; }
+        public long? MemMegabyte { get; set; }
+    }
+    public string? SelectedProfileUuid { get; set; }
+
+    public string? JrePath { get; set; }
+    public long? MemMegabyte { get; set; }
+}
+public interface IVersionConfig
+{
+    public string? JrePath { get; set; }
+    public long? MemMegabyte { get; set; }
 }
