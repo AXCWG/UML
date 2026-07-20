@@ -1,6 +1,6 @@
 import Enumerable from "linq";
 import {createSignal} from "solid-js";
-import {AdditionRequest, PlayRequest} from "./Request";
+import {AdditionRequest, AddProfileRequest, PlayRequest} from "./Request";
 import {GetConfigRequest, MessageRequest, Request, SetConfigRequest} from "./Request";
 import {ErrorResponse} from "./Response";
 import {AdditionResponse} from "./Response";
@@ -134,6 +134,13 @@ class  BackendDelegator  {
         const req = {
             id : id, type: "play"
         } as PlayRequest
+        return this.RequestBase(req);
+    }
+    public static AddProfileRequest(name: string):Promise<void>{
+        const id = this.IdGen();
+        const req = {
+            id : id, type: "addProfile", name: name
+        } as AddProfileRequest
         return this.RequestBase(req);
     }
 }

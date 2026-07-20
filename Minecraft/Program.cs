@@ -101,7 +101,10 @@ class Program
                                     var st = State.GetAll;
                                     st.Profiles?.Add(new()
                                     {
-                                        Name = addProfileRequest.Name
+                                        Path = s,
+                                        Name = addProfileRequest.Name,
+                                        Uuid = Guid.NewGuid().ToString(),
+                                        UnreliableVersionList = []
                                     });
                                     State.Set(st);
                                 }
@@ -123,7 +126,7 @@ class Program
                     {
                         throw; // TODO 处理异常
                     }
-                }).SetFileSystemAccessEnabled(true);
+                }).SetFileSystemAccessEnabled(true).SetLogVerbosity(-1);
 
 #if DEBUG
             Console.WriteLine("Loading from Vite dev server (http://localhost:3000)...");

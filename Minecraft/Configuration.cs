@@ -1,9 +1,12 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using AXExpansion;
 using CmlLib.Core;
 using CmlLib.Core.ProcessBuilder;
+using CmlLib.Core.Version;
 using CmlLib.Core.VersionLoader;
 using Log = Minecraft.LauncherLogger;
 // ReSharper disable VariableHidesOuterVariable
@@ -38,16 +41,15 @@ public static class State
     //         };
     //     }
     // }
-    private static MinecraftLauncher ConvieniantlyGetMLauncher => new MinecraftLauncher(MinecraftLauncherParameters.CreateDefault().With(i =>
+    private static MinecraftLauncher ConvieniantlyGetMLauncher(string path) => new MinecraftLauncher(MinecraftLauncherParameters.CreateDefault().With(i =>
     {
-        i.VersionLoader =  new LocalJsonVersionLoader(new MinecraftPath(MinecraftPath.GetOSDefaultPath()));
+        i.VersionLoader =  new LocalJsonVersionLoader(new MinecraftPath(path));
             
     }));
-    public static async Task<int> CheckVersion(string? uuid = null)
+    public static async Task<int> CheckVersion()
     {
         while (true)
         {
-            var l = await ConvieniantlyGetMLauncher.GetAllVersionsAsync();
             var profiles = Get(i => i.Profiles);
             if (profiles is null || profiles.Any(i => i.UnreliableVersionList is null) || profiles.Any(i => i.Path is null))
             {
@@ -57,10 +59,12 @@ public static class State
             }
 
             var count = 0;
-            if (uuid is null)
+            if (true)// TODO
             {
                 foreach (var profile in profiles)
                 {
+                    var l = await ConvieniantlyGetMLauncher(profile.Path!).GetAllVersionsAsync();
+                    
                     profile.UnreliableVersionList!.Remove(i =>
                     {
                         if (!l.Contains(i.Value.Name))
@@ -80,23 +84,23 @@ public static class State
                             Name = versionMetadata.Name
                         });
                     }
-                    profile.UnreliableVersionList.SPrintLn();
                 }
 
                
             }
             else
             {
-                profiles.FirstOrDefault(i=>i.Uuid == uuid)?.UnreliableVersionList!.Remove(i =>
-                {
-                    if (!l.Contains(i.Value.Name))
-                    {
-                        count++;
-                        return true;
-                    }
-
-                    return false; 
-                });
+                // TODO Possibly
+                // profiles.FirstOrDefault(i=>i.Uuid == uuid)?.UnreliableVersionList!.Remove(i =>
+                // {
+                //     if (!l.Contains(i.Value.Name))
+                //     {
+                //         count++;
+                //         return true;
+                //     }
+                //
+                //     return false; 
+                // });
             }
             
             Set(i=>i.Profiles, profiles);
@@ -180,7 +184,6 @@ public static class State
             i.VersionLoader =  new LocalJsonVersionLoader(new MinecraftPath(MinecraftPath.GetOSDefaultPath()));
             
         }));
-        (await m.GetAllVersionsAsync()).SPrintLn();
     }
     public static void Validation()
     {
@@ -278,7 +281,6 @@ public static class State
                         {
                             i.VersionLoader = new LocalJsonVersionLoader(minecraftPath);
                         })).GetAllVersionsAsync().GetAwaiter().GetResult();
-                    exist.SPrintLn();
                     test.Profiles[i].UnreliableVersionList = new Dictionary<string, StateSnapshot.VersionConfig>().With(d =>
                     {
                         foreach (var versionConfig in exist)
@@ -310,8 +312,15 @@ public static class State
                 test.SelectedProfileUuid = test.Profiles[0].Uuid;
             }
 
-            CheckVersion().GetAwaiter().GetResult();
+            if (test.OfflineNameList is null || (test.Selected is null && test.OfflineNameList is null))
+            {
+                Log.LogError($"Property '{nameof(test.OfflineNameList)}' or '{nameof(test.Selected)}' is null. Rebuilding. ");
+                test.OfflineNameList = [];
+                test.Selected = null; 
+            }
             File.WriteAllText(pathJoin, JsonSerializer.Serialize(test, Options));
+            CheckVersion().GetAwaiter().GetResult();
+            
             Log.LogInfo("Validated. ", nameof(State));
         }
         catch (JsonException e)
@@ -331,7 +340,7 @@ public static class State
         {
             if (expressionMember.Member.MemberType is MemberTypes.Property)
             {
-                Log.LogInfo($"Setting state property \"{expressionMember.Member.Name}\"");
+                Log.LogInfo($"Setting state property \"{expressionMember.Member.Name}\"", nameof(State));
                 try
                 {
                     var obj = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
@@ -466,6 +475,7 @@ public class StateSnapshot : IVersionConfig
     public class VersionConfig : IVersionConfig
     {
         public string? Name { get; set; }
+        public string? Version { get; set; }
         public string? JrePath { get; set; }
         public long? MemMegabyte { get; set; }
     }
@@ -473,6 +483,10 @@ public class StateSnapshot : IVersionConfig
 
     public string? JrePath { get; set; }
     public long? MemMegabyte { get; set; }
+
+    public List<string>? OfflineNameList { get; set; }
+    [AllowNull]
+    public int? Selected { get; set; }
 }
 public interface IVersionConfig
 {
