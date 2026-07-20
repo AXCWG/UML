@@ -17,6 +17,11 @@ static class PhotinoExtension
         {
             await window.SendWebMessageAsync(JsonSerializer.Serialize(e, JsonSerializerOptions.Web));
         }
+
+        public async Task SendJsonMessageAsync<T>(T obj)
+        {
+            await window.SendWebMessageAsync(JsonSerializer.Serialize(obj, JsonSerializerOptions.Web));
+        }
     }
 
     extension(JsonSerializer)

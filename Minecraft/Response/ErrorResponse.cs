@@ -2,9 +2,8 @@
 
 class ErrorResponse : Response
 {
-    public ErrorResponse(long id, string error)
+    public ErrorResponse(long id, string error) : base(id)
     {
-        Id = id; 
         Error = error;
         Type = Request.Request.MessageType.Error;
     }

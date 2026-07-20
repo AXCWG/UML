@@ -2,5 +2,10 @@
 
  class ConfigResponse : Response
 {
-    public required StateSnapshot Snapshot { get; set; } 
+    public ConfigResponse(long id, StateSnapshot snapshot) : base(id)
+    {
+        Type = Request.Request.MessageType.SetConfig;
+        Snapshot = snapshot;
+    }
+    public  StateSnapshot Snapshot { get; set; } 
 }

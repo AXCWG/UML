@@ -35,16 +35,11 @@ class Program
                                     MessageRequest? messageRequest =
                                         JsonSerializer.Deserialize<MessageRequest>(message, JsonSerializerOptions.Web);
                                     await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<MessageResponse>(
-                                        new()
-                                        {
-                                            Id = obj.Id,
-                                            Type = Request.Request.MessageType.Message,
-                                            Content = $"Got it: {messageRequest?.Content}"
-                                        }, JsonSerializerOptions.Web));
+                                        new(obj.Id,  $"Got it: {messageRequest?.Content}") , JsonSerializerOptions.Web));
                                 }
                                 catch (Exception e)
                                 {
-                                    photinoWindow.SendErrorMessage(new(obj.Id, e.ToString()));
+                                    await photinoWindow.SendErrorMessageAsync(new(obj.Id, e.ToString()));
                                 }
                                 
                                 break;
@@ -58,12 +53,7 @@ class Program
                                     AdditionRequest? additionRequest =
                                         JsonSerializer.Deserialize<AdditionRequest>(message, JsonSerializerOptions.Web);
                                     await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<AdditionResponse>(
-                                        new()
-                                        {
-                                            Id = obj.Id,
-                                            Type = Request.Request.MessageType.Addition,
-                                            Result = additionRequest.A + additionRequest.B
-                                        }, JsonSerializerOptions.Web));
+                                        new(obj.Id, additionRequest.A + additionRequest.B) , JsonSerializerOptions.Web));
                                 }
                                 catch (Exception e)
                                 {
@@ -74,12 +64,7 @@ class Program
                                 break;
                             case Request.Request.MessageType.GetConfig:
                                 await State.CheckVersion();
-                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(new ConfigResponse
-                                {
-                                    Id = obj.Id,
-                                    Type = Request.Request.MessageType.GetConfig,
-                                    Snapshot = State.GetAll
-                                }, JsonSerializerOptions.Web));
+                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(new ConfigResponse(obj.Id, State.GetAll), JsonSerializerOptions.Web));
                                 break;
                             case Request.Request.MessageType.SetConfig:
                                 //TODO
@@ -98,6 +83,30 @@ class Program
                                 LauncherLogger.LogWarning<Program>("Launch clicked. ");
                                 State.LauncherBackend.Play().GetAwaiter().GetResult();
                                 await photinoWindow.SendWebMessageAsync(JsonSerializer.SerializeWeb(new PlayResponse(obj.Id)));
+                                break; 
+                            case Request.Request.MessageType.AddProfile:
+                                var addProfileRequest = JsonSerializer.Deserialize<AddProfileRequest>(message, JsonSerializerOptions.Web);
+                                if (addProfileRequest is null)
+                                {
+                                    LauncherLogger.LogError<Program>("Client request add profile failed: null request. ");
+                                    await photinoWindow.SendErrorMessageAsync(new(id: obj.Id, error: "Add Profile request is null. "));
+                                    break; 
+                                }
+                                foreach (var s in await photinoWindow.ShowOpenFolderAsync())
+                                {
+                                    if (!Path.Exists(s))
+                                    {
+                                        Directory.CreateDirectory(s);
+                                    };
+                                    var st = State.GetAll;
+                                    st.Profiles?.Add(new()
+                                    {
+                                        Name = addProfileRequest.Name
+                                    });
+                                    State.Set(st);
+                                }
+                                State.Validation();
+                                await photinoWindow.SendJsonMessageAsync(new AddProfileResponse(obj.Id));
                                 break; 
                             case null:
                                 break;

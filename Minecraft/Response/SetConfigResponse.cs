@@ -2,9 +2,8 @@
 
 class SetConfigResponse  : Response
 {
-    public SetConfigResponse(long id)
+    public SetConfigResponse(long id) : base(id)
     {
-        this.Id = id;
         Type = Request.Request.MessageType.SetConfig;
     }
 }

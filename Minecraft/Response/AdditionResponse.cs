@@ -1,6 +1,6 @@
 ﻿namespace Minecraft.Response;
 
-class AdditionResponse : Response
+class AdditionResponse(long id, long result) : Response(id)
 {
-    public long Result { get; set; }
+    public long Result { get; set; } = result;
 }

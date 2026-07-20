@@ -19,6 +19,8 @@ record Request
         SetConfig,
         [JsonStringEnumMemberName("play")]
         Play, 
+        [JsonStringEnumMemberName("addProfile")]
+        AddProfile
 
         
     }

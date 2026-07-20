@@ -2,9 +2,8 @@
 
 class PlayResponse : Response
 {
-    public PlayResponse(long id)
+    public PlayResponse(long id) : base(id)
     {
-        Id = id;
         Type = Request.Request.MessageType.Play;
     }
 }
