@@ -4,7 +4,7 @@ namespace Minecraft.Request;
 
 record Request
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter<MessageType>))]
     public enum MessageType
     {
         [JsonStringEnumMemberName("message")]
