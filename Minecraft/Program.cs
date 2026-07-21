@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using AXExpansion;
 using Minecraft.Request;
 using Minecraft.Response;
@@ -7,9 +9,18 @@ using Photino.NET;
 namespace Minecraft;
 class Program
 {
+    [DllImport("kernel32.dll")]
+    private static extern bool AllocConsole();
+
     [STAThread]
     static void Main(string[] args)
     {
+        if (args.Contains("--logwindow"))
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                AllocConsole();
+        }
+
         LauncherLogger.LogInfo<Program>("Program starting. ");
         try
         {
@@ -158,4 +169,28 @@ class Program
         LauncherLogger.LogInfo<Program>("Program ended. ");
 
     }
+}
+[JsonSerializable(typeof(Request.Request))]
+[JsonSerializable(typeof(SetConfigRequest))]
+[JsonSerializable(typeof(Request.AddProfileRequest))]
+[JsonSerializable(typeof(Request.AdditionRequest))]
+[JsonSerializable(typeof(Request.ErrorRequest))]
+[JsonSerializable(typeof(Request.GetConfigRequest))]
+[JsonSerializable(typeof(Request.MessageRequest))]
+[JsonSerializable(typeof(Request.PlayRequest))]
+[JsonSerializable(typeof(Response.Response))]
+[JsonSerializable(typeof(Response.ConfigResponse))]
+[JsonSerializable(typeof(Response.SetConfigResponse))]
+[JsonSerializable(typeof(Response.AddProfileResponse))]
+[JsonSerializable(typeof(Response.ErrorResponse))]
+[JsonSerializable(typeof(Response.MessageResponse))]
+[JsonSerializable(typeof(Response.PlayResponse))]
+[JsonSerializable(typeof(Response.AdditionResponse))]
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
+public partial class UmlWebJsonContext : JsonSerializerContext
+{
+}
+[JsonSerializable(typeof(StateSnapshot))]
+public partial class UmlStateJsonContext : JsonSerializerContext
+{
 }

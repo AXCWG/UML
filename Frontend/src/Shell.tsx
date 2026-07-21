@@ -11,7 +11,7 @@ const Shell = (props: RouteSectionProps)=>{
     return <div class={"flex flex-col min-h-0 flex-1"}>
             <div>
                 <div class={"text-center py-2 border-t-1 border-base-200"}>Minecraft</div>
-                <div role={"tablist"} class={"tabs tabs-lift justify-center bg-base-200"}>
+                <div role={"tablist"} class={"tabs tabs-box tabs-sm justify-center"}>
                     <a id={"/home"} role={"tab"} class={"tab "} classList={{["tab-active"]: current() === "/home" || current() === "/"}} onclick={()=>{
                         navigate("/home");
                     }}>Home</a>

@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using Minecraft.Response;
 using Photino.NET;
 
@@ -10,17 +11,16 @@ static class PhotinoExtension
     {
         public void SendErrorMessage(ErrorResponse e)
         {
-            window.SendWebMessage(JsonSerializer.Serialize(e, JsonSerializerOptions.Web));
+             window.SendWebMessage(JsonSerializer.SerializeWeb(e));
         }
 
         public async Task SendErrorMessageAsync(ErrorResponse e)
         {
-            await window.SendWebMessageAsync(JsonSerializer.Serialize(e, JsonSerializerOptions.Web));
+            await window.SendWebMessageAsync(JsonSerializer.SerializeWeb(e));
         }
-
         public async Task SendJsonMessageAsync<T>(T obj)
         {
-            await window.SendWebMessageAsync(JsonSerializer.Serialize(obj, JsonSerializerOptions.Web));
+            await window.SendWebMessageAsync(JsonSerializer.SerializeWeb(obj));
         }
     }
 
@@ -28,12 +28,12 @@ static class PhotinoExtension
     {
         public static string SerializeWeb<T>(T obj)
         {
-            return JsonSerializer.Serialize(obj, JsonSerializerOptions.Web);
+            return JsonSerializer.Serialize(obj, UmlWebJsonContext.Default.GetTypeInfo(typeof(T))??throw new InvalidOperationException("Check source gen. "));
         }
 
         public static T? DeserializeWeb<T>(string json)
         {
-            return JsonSerializer.Deserialize<T>(json, JsonSerializerOptions.Web);
+            return (T?)JsonSerializer.Deserialize(json, UmlWebJsonContext.Default.GetTypeInfo(typeof(T))??throw new InvalidOperationException("Check source gen. "));
         }
     }
 }
