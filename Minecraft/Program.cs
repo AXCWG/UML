@@ -35,7 +35,7 @@ class Program
                     Request.Request? obj;
                     try
                     {
-                        obj = JsonSerializer.Deserialize<Request.Request>(message, options: JsonSerializerOptions.Web);
+                        obj = JsonSerializer.Deserialize(message, UmlWebJsonContext.Default.Request);
 
                         var photinoWindow = ((PhotinoWindow)sender!);
                         switch (obj?.Type)
@@ -44,9 +44,10 @@ class Program
                                 try
                                 {
                                     MessageRequest? messageRequest =
-                                        JsonSerializer.Deserialize<MessageRequest>(message, JsonSerializerOptions.Web);
-                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<MessageResponse>(
-                                        new(obj.Id,  $"Got it: {messageRequest?.Content}") , JsonSerializerOptions.Web));
+                                        JsonSerializer.Deserialize(message, UmlWebJsonContext.Default.MessageRequest);
+                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(
+                                        new MessageResponse(obj.Id, $"Got it: {messageRequest?.Content}"),
+                                        UmlWebJsonContext.Default.MessageResponse));
                                 }
                                 catch (Exception e)
                                 {
@@ -55,32 +56,36 @@ class Program
                                 
                                 break;
                             case Request.Request.MessageType.Error:
-                                ErrorRequest? errorRequest = JsonSerializer.Deserialize<ErrorRequest>(message, JsonSerializerOptions.Web);
+                                ErrorRequest? errorRequest = JsonSerializer.Deserialize(message, UmlWebJsonContext.Default.ErrorRequest);
                                 Console.WriteLine("{0}[Frontend] {1}", DateTime.Now, errorRequest?.Error);
                                 break;
                             case Request.Request.MessageType.Addition:
                                 try
                                 {
                                     AdditionRequest? additionRequest =
-                                        JsonSerializer.Deserialize<AdditionRequest>(message, JsonSerializerOptions.Web);
-                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<AdditionResponse>(
-                                        new(obj.Id, additionRequest.A + additionRequest.B) , JsonSerializerOptions.Web));
+                                        JsonSerializer.Deserialize(message, UmlWebJsonContext.Default.AdditionRequest);
+                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(
+                                        new AdditionResponse(obj.Id, additionRequest.A + additionRequest.B),
+                                        UmlWebJsonContext.Default.AdditionResponse));
                                 }
                                 catch (Exception e)
                                 {
-                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize<ErrorResponse>(
-                                        new(obj.Id, e.ToString()), JsonSerializerOptions.Web));
+                                    await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(
+                                        new ErrorResponse(obj.Id, e.ToString()),
+                                        UmlWebJsonContext.Default.ErrorResponse));
                                 }
                                 
                                 break;
                             case Request.Request.MessageType.GetConfig:
                                 await State.CheckVersion();
-                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(new ConfigResponse(obj.Id, State.GetAll), JsonSerializerOptions.Web));
+                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(
+                                    new ConfigResponse(obj.Id, State.GetAll),
+                                    UmlWebJsonContext.Default.ConfigResponse));
                                 break;
                             case Request.Request.MessageType.SetConfig:
                                 //TODO
                                 var sCReq =
-                                    JsonSerializer.Deserialize<SetConfigRequest>(message, JsonSerializerOptions.Web);
+                                    JsonSerializer.Deserialize(message, UmlWebJsonContext.Default.SetConfigRequest);
                                 if (sCReq?.Snapshot is null)
                                 {
                                     LauncherLogger.LogError<Program>("Client request set state failed: null request. ");
@@ -88,7 +93,9 @@ class Program
                                     break;
                                 }
                                 State.Set(sCReq);
-                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(new SetConfigResponse(obj.Id)));
+                                await photinoWindow.SendWebMessageAsync(JsonSerializer.Serialize(
+                                    new SetConfigResponse(obj.Id),
+                                    UmlWebJsonContext.Default.SetConfigResponse));
                                 break;
                             case Request.Request.MessageType.Play:
                                 LauncherLogger.LogWarning<Program>("Launch clicked. ");
@@ -96,7 +103,7 @@ class Program
                                 await photinoWindow.SendWebMessageAsync(JsonSerializer.SerializeWeb(new PlayResponse(obj.Id)));
                                 break; 
                             case Request.Request.MessageType.AddProfile:
-                                var addProfileRequest = JsonSerializer.Deserialize<AddProfileRequest>(message, JsonSerializerOptions.Web);
+                                var addProfileRequest = JsonSerializer.Deserialize(message, UmlWebJsonContext.Default.AddProfileRequest);
                                 if (addProfileRequest is null)
                                 {
                                     LauncherLogger.LogError<Program>("Client request add profile failed: null request. ");
