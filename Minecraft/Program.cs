@@ -187,10 +187,11 @@ class Program
 [JsonSerializable(typeof(Response.PlayResponse))]
 [JsonSerializable(typeof(Response.AdditionResponse))]
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
-public partial class UmlWebJsonContext : JsonSerializerContext
+internal partial class UmlWebJsonContext : JsonSerializerContext
 {
 }
 [JsonSerializable(typeof(StateSnapshot))]
-public partial class UmlStateJsonContext : JsonSerializerContext
+[JsonSourceGenerationOptions(WriteIndented = true, AllowTrailingCommas = true)]
+internal partial class UmlStateJsonContext : JsonSerializerContext
 {
 }

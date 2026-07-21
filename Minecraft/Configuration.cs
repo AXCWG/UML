@@ -17,11 +17,6 @@ public static class State
 {
     internal static  Minecraft LauncherBackend { get; set; } = new Minecraft();
     
-    private static  JsonSerializerOptions Options => new JsonSerializerOptions(JsonSerializerOptions.Default).With(d =>
-    {
-        d.WriteIndented = true;
-        d.AllowTrailingCommas = true;
-    });
     static State()
     {
         Validation();
@@ -199,7 +194,7 @@ public static class State
                 {
                     Path = MinecraftPath.GetOSDefaultPath(), Name = "Default Official Profile", Uuid = uuid,
                 }], SelectedProfileUuid = uuid
-            }, options: Options));return;
+            }, UmlStateJsonContext.Default.StateSnapshot));return;
         }
 
             
@@ -207,7 +202,7 @@ public static class State
         try
         {
             // TODO on adding property
-            var test = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(pathJoin), Options);
+            var test = JsonSerializer.Deserialize(File.ReadAllText(pathJoin), UmlStateJsonContext.Default.StateSnapshot);
             if (test is null)
             {
                 Log.LogError("Whole file is null. Deleting existing state file and replace with a new one.",
@@ -318,7 +313,7 @@ public static class State
                 test.OfflineNameList = [];
                 test.Selected = null; 
             }
-            File.WriteAllText(pathJoin, JsonSerializer.Serialize(test, Options));
+            File.WriteAllText(pathJoin, JsonSerializer.Serialize(test, UmlStateJsonContext.Default.StateSnapshot));
             CheckVersion().GetAwaiter().GetResult();
             
             Log.LogInfo("Validated. ", nameof(State));
@@ -343,9 +338,10 @@ public static class State
                 Log.LogInfo($"Setting state property \"{expressionMember.Member.Name}\"", nameof(State));
                 try
                 {
-                    var obj = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
+                    var pathJoin = Environment
                         .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                        .PathJoin("AXCWG", "UML", "state.json")), Options);
+                        .PathJoin("AXCWG", "UML", "state.json");
+                    var obj = JsonSerializer.Deserialize(File.ReadAllText(pathJoin), UmlStateJsonContext.Default.StateSnapshot);
                     if (obj is null)
                     {
                         throw new JsonException("Whole file is null. ");
@@ -354,9 +350,7 @@ public static class State
                     if (typeof(StateSnapshot).GetProperty(expressionMember.Member.Name) is { } property)
                     {
                         property.SetValue(obj, value);
-                        File.WriteAllText(Environment
-                            .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                            .PathJoin("AXCWG", "UML", "state.json"),JsonSerializer.Serialize(obj, Options));
+                        File.WriteAllText(pathJoin, JsonSerializer.Serialize(obj, UmlStateJsonContext.Default.StateSnapshot));
                     }
                     else
                     {
@@ -380,9 +374,10 @@ public static class State
     {
         try
         {
-            var stored = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
+            var pathJoin = Environment
                 .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                .PathJoin("AXCWG", "UML", "state.json")), Options);
+                .PathJoin("AXCWG", "UML", "state.json");
+            var stored = JsonSerializer.Deserialize(File.ReadAllText(pathJoin), UmlStateJsonContext.Default.StateSnapshot);
 
             foreach (var propertyInfo in typeof(StateSnapshot).GetProperties(
                          BindingFlags.Public | BindingFlags.Instance))
@@ -392,10 +387,8 @@ public static class State
                     .GetValue(obj));
             }
 
-            File.WriteAllText(Environment
-                    .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                    .PathJoin("AXCWG", "UML", "state.json"),
-                JsonSerializer.Serialize(stored ?? throw new NullReferenceException(), Options));
+            File.WriteAllText(pathJoin,
+                JsonSerializer.Serialize(stored ?? throw new NullReferenceException(), UmlStateJsonContext.Default.StateSnapshot));
         }
         catch (JsonException e)
         {
@@ -418,9 +411,9 @@ public static class State
     {
         try
         {
-            var obj = JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
+            var obj = JsonSerializer.Deserialize(File.ReadAllText(Environment
                 .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                .PathJoin("AXCWG", "UML", "state.json")), Options);
+                .PathJoin("AXCWG", "UML", "state.json")), UmlStateJsonContext.Default.StateSnapshot);
             if (expression.Body is not MemberExpression expressionMember || expressionMember.Member.MemberType is not MemberTypes.Property)
                 throw new MemberAccessException("Only property can be accessed through this method. ");
             var prop = (typeof(StateSnapshot).GetProperty(expressionMember.Member.Name));
@@ -452,9 +445,9 @@ public static class State
     {
         get
         {
-            return JsonSerializer.Deserialize<StateSnapshot>(File.ReadAllText(Environment
+            return JsonSerializer.Deserialize(File.ReadAllText(Environment
                 .GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                .PathJoin("AXCWG", "UML", "state.json")), Options) ?? throw new NullReferenceException();
+                .PathJoin("AXCWG", "UML", "state.json")), UmlStateJsonContext.Default.StateSnapshot) ?? throw new NullReferenceException();
         }
     }
 }
