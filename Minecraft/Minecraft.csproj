@@ -22,7 +22,8 @@
 
 
     <Target Name="BuildFrontend" BeforeTargets="PrepareUiZip" Condition="Exists('..\Frontend\package.json')">
-        <Exec Command="pnpm run build" WorkingDirectory="..\Frontend" />
+        <Exec Command="pnpm run build" WorkingDirectory="..\Frontend" Condition="'$(OS)' == 'Windows_NT'" />
+        <Exec Command="bash -c &quot;source ~/.nvm/nvm.sh 2>/dev/null; pnpm run build&quot;" WorkingDirectory="..\Frontend" Condition="'$(OS)' != 'Windows_NT'" />
     </Target>
 
     <Target Name="PrepareUiZip" BeforeTargets="AssignTargetPaths" Condition="Exists('wwwroot')">

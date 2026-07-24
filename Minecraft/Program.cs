@@ -26,10 +26,13 @@ class Program
         {
             var window = new PhotinoWindow()
                 .SetTitle("Launcher")
-                .SetSize(1024, 768)
                 .Center()
-                .SetDevToolsEnabled(true)
+                .SetDevToolsEnabled(true).SetUseOsDefaultSize(true).SetChromeless(true)
+                #if DEBUG
+                .SetContextMenuEnabled(true)
+                #else
                 .SetContextMenuEnabled(false)
+#endif
                 .RegisterWebMessageReceivedHandler(async void (sender, message) =>
                 {
                     Request.Request? obj;
